@@ -90,6 +90,92 @@ Example request:
 
 A valid request returns `201 Created` with generated persistence and business identifiers, audit timestamps, and the original serial number. The database stores the serial number as randomized AES/GCM ciphertext. Registering the same serial number at the same mine returns `409 Conflict`; invalid coordinates, status, or request data return `400 Bad Request` as RFC 9457 problem details.
 
+
+## Business Rules
+
+The `MiningEquipmentUnit` aggregate follows these rules:
+
+- `equipmentUnitId` is generated automatically as a UUID when the equipment unit is registered.
+- `serialNumber` must be unique within the same `assignedMineSite`.
+- Latitude must be between `-90` and `90`.
+- Longitude must be between `-180` and `180`.
+- `hoursOfOperation` must be zero or greater.
+- `operationStatus` only accepts:
+    - `ACTIVE`
+    - `IN_MAINTENANCE`
+    - `INACTIVE`
+- `serialNumber` is stored encrypted in the database and automatically decrypted when read.
+- Creation and modification timestamps are generated automatically.
+
+## Project Structure
+
+```text
+pc2repasoswagger
+├── mining
+│   ├── domain
+│   │   ├── model
+│   │   │   ├── aggregates
+│   │   │   └── valueobjects
+│   │   └── repositories
+│   ├── application
+│   │   ├── commands
+│   │   ├── commandservices
+│   │   └── internal
+│   ├── infrastructure
+│   │   └── persistence
+│   └── interfaces
+│       └── rest
+│
+└── shared
+    ├── domain
+    ├── application
+    ├── infrastructure
+    └── interfaces
+
+
+
+```md
+## HTTP Responses
+
+| Status | Meaning |
+| --- | --- |
+| `201 Created` | Equipment unit registered successfully |
+| `400 Bad Request` | Invalid request data or business invariant |
+| `409 Conflict` | Same serial number already exists in the same mine site |
+| `500 Internal Server Error` | Unexpected application error |
+
+
+## Request Flow
+
+A successful POST request follows this flow:
+
+```text
+HTTP Request
+    ↓
+CreateMiningEquipmentUnitResource
+    ↓
+CreateMiningEquipmentUnitCommandFromResourceAssembler
+    ↓
+CreateMiningEquipmentUnitCommand
+    ↓
+MiningEquipmentUnitCommandService
+    ↓
+MiningEquipmentUnitCommandServiceImpl
+    ↓
+MiningEquipmentUnit Aggregate
+    ↓
+MiningEquipmentUnitRepository
+    ↓
+MiningEquipmentUnitRepositoryImpl
+    ↓
+MiningEquipmentUnitPersistenceAssembler
+    ↓
+MiningEquipmentUnitPersistenceEntity
+    ↓
+Spring Data JPA / Hibernate
+    ↓
+MySQL
+
 ## Author
 
 Gabriel Yanac Flores
